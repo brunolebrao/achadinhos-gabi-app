@@ -1,0 +1,21 @@
+{
+  "name": "@repo/content-generator",
+  "version": "1.0.0",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "eslint .",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@repo/shared": "workspace:*",
+    "canvas": "^2.11.2",
+    "sharp": "^0.33.0",
+    "puppeteer": "^21.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "eslint": "^8.54.0",
+    "typescript": "5.8.3"
+  }
+}

@@ -36,3 +36,24 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
+
+# WhatsApp sessions and sensitive data
+sessions/
+*.qr
+.wwebjs_cache/
+.wwebjs_auth/
+
+# Logs
+logs/
+*.log
+
+# Development and test scripts
+*.sh
+!create-templates.sh
+!install-*.sh
+
+# Documentation files (keep only main docs)
+*_SETUP.md
+*_GUIDE.md
+*_STATUS.md
+whatsapp-qr.html

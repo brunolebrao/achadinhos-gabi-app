@@ -1,135 +1,299 @@
-# Turborepo starter
+# 🛍️ Achadinhos da Gabi
 
-This Turborepo starter is maintained by the Turborepo core team.
+Sistema automatizado de affiliate marketing que encontra produtos em ofertas e envia via WhatsApp.
 
-## Using this example
+## 🎯 Funcionalidades
 
-Run the following command:
+- **🤖 Scrapers Automatizados**: Coleta produtos do Mercado Livre, Shopee, Amazon e AliExpress
+- **📱 WhatsApp Integration**: Envio automático de mensagens com WhatsApp Web.js
+- **📝 Sistema de Templates**: Templates personalizáveis com variáveis dinâmicas
+- **👥 Gestão de Contatos**: Organização de contatos e grupos
+- **📊 Analytics Completo**: Métricas de performance e conversão
+- **🎨 Dashboard Moderno**: Interface React com design responsivo
 
-```sh
-npx create-turbo@latest
+## 🚀 Quick Start (Desenvolvimento)
+
+### Pré-requisitos
+- Node.js 18+
+- Docker & Docker Compose
+- pnpm (recomendado)
+
+### Setup Automático
+```bash
+# Clone o repositório
+git clone <repo-url>
+cd achadinhos-gabi-app
+
+# Execute o setup automático
+./scripts/setup-dev.sh
 ```
 
-## What's inside?
+### Setup Manual
+```bash
+# 1. Instalar dependências
+pnpm install
 
-This Turborepo includes the following packages/apps:
+# 2. Iniciar infraestrutura
+docker-compose -f docker-compose.dev.yml up -d
 
-### Apps and Packages
+# 3. Configurar banco de dados
+cd apps/api
+pnpm db:push
+pnpm tsx ../../scripts/setup-database.ts
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+# 4. Iniciar API
+pnpm dev
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-```
-cd my-turborepo
-
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build
-yarn dlx turbo build
-pnpm exec turbo build
+# 5. Iniciar Frontend (novo terminal)
+cd ../web
+pnpm dev
 ```
 
-You can build a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
+## 🌐 Acessar o Sistema
+
+- **Frontend**: http://localhost:3000
+- **API**: http://localhost:3001
+- **pgAdmin**: http://localhost:5050 (admin@achadinhos.com / admin123)
+
+### Credenciais Demo
+- **Email**: demo@achadinhos.com
+- **Senha**: demo123
+
+## 🏗️ Arquitetura
 
 ```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build --filter=docs
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build --filter=docs
-yarn exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
+achadinhos-gabi-app/
+├── apps/
+│   ├── api/              # Backend Fastify + TypeScript
+│   └── web/              # Frontend Next.js 15 + React 19
+├── packages/
+│   ├── database/         # Prisma ORM + PostgreSQL
+│   ├── whatsapp/         # WhatsApp Web.js integration
+│   ├── shared/           # Tipos e utilitários compartilhados
+│   └── ui/               # Componentes UI reutilizáveis
+└── scripts/              # Scripts de automação
 ```
 
-### Develop
+## 🐳 Deploy com Docker
 
-To develop all apps and packages, run the following command:
+### Produção Completa
+```bash
+# Setup completo com dados demo
+./scripts/setup-prod.sh --seed
 
-```
-cd my-turborepo
-
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev
-yarn exec turbo dev
-pnpm exec turbo dev
+# Ou configuração limpa
+./scripts/setup-prod.sh
 ```
 
-You can develop a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
+### Serviços Opcionais
+```bash
+# Painel administrativo
+docker-compose --profile admin up -d
 
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev --filter=web
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev --filter=web
-yarn exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
+# Monitoramento (Prometheus + Grafana)
+docker-compose --profile monitoring up -d
 ```
 
-### Remote Caching
+## ⚙️ Configuração
 
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
+### Variáveis de Ambiente Principais
+```bash
+# Banco de dados
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/achadinhos_gabi"
 
-Turborepo can use a technique known as [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
+# JWT e CORS
+JWT_SECRET="sua-chave-secreta-super-forte"
+CORS_ORIGIN="http://localhost:3000"
 
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
+# WhatsApp
+WHATSAPP_SESSION_PATH="./sessions"
 
-```
-cd my-turborepo
-
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo login
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo login
-yarn exec turbo login
-pnpm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo link
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo link
-yarn exec turbo link
-pnpm exec turbo link
+# IDs de Afiliados
+MERCADOLIVRE_AFFILIATE_ID="seu-id-ml"
+SHOPEE_AFFILIATE_ID="seu-id-shopee"
+AMAZON_ASSOCIATE_TAG="seu-tag-amazon"
 ```
 
-## Useful Links
+## 📋 Scripts Disponíveis
 
-Learn more about the power of Turborepo:
+### Desenvolvimento
+```bash
+# Raiz do projeto
+pnpm dev                    # Inicia todos os serviços
+pnpm build                  # Build de produção
+pnpm lint                   # Linting
+pnpm check-types           # Verificação de tipos
 
-- [Tasks](https://turborepo.com/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.com/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.com/docs/reference/configuration)
-- [CLI Usage](https://turborepo.com/docs/reference/command-line-reference)
+# API específica
+cd apps/api
+pnpm dev                   # API em modo desenvolvimento
+pnpm db:push              # Aplicar schema no banco
+pnpm db:generate          # Gerar cliente Prisma
+
+# Frontend específico
+cd apps/web
+pnpm dev                  # Frontend em modo desenvolvimento
+pnpm build                # Build otimizado
+```
+
+### Infraestrutura
+```bash
+# Desenvolvimento
+docker-compose -f docker-compose.dev.yml up -d
+docker-compose -f docker-compose.dev.yml down
+
+# Produção
+docker-compose up -d
+docker-compose down
+
+# Logs
+docker-compose logs -f
+docker-compose logs -f api
+```
+
+## 🧪 Como Funciona
+
+### 1. Coleta de Produtos (Scrapers)
+- Scrapers rodam automaticamente baseados em cron schedules
+- Coletam produtos com desconto das principais plataformas
+- Filtram por categoria, preço, desconto mínimo, etc.
+
+### 2. Processamento e Aprovação
+- Produtos coletados ficam com status `PENDING`
+- Interface permite aprovar/rejeitar produtos
+- Produtos aprovados ficam disponíveis para envio
+
+### 3. Envio via WhatsApp
+- Templates personalizáveis com variáveis dinâmicas
+- Envio para contatos individuais ou grupos
+- Controle de rate limiting e sessões múltiplas
+- QR Code para conectar contas WhatsApp
+
+### 4. Tracking e Analytics
+- Rastreamento de cliques em links de afiliados
+- Métricas de conversão por plataforma/categoria
+- Dashboard com insights de performance
+
+## 🔧 Desenvolvimento
+
+### Estrutura de Pacotes
+- **@achadinhos/api**: Backend API
+- **@repo/database**: Schema Prisma e migrations
+- **@repo/whatsapp**: Integração WhatsApp Web.js
+- **@repo/shared**: Tipos TypeScript compartilhados
+- **@repo/ui**: Componentes UI base
+- **web**: Frontend Next.js
+
+### Comandos Úteis
+```bash
+# Adicionar dependência em pacote específico
+pnpm add axios --filter=@achadinhos/api
+
+# Rodar comando em todos os pacotes
+pnpm -r run build
+
+# Limpar tudo
+pnpm -r run clean
+rm -rf node_modules
+pnpm install
+```
+
+## 🎨 Frontend
+
+### Stack
+- **Next.js 15** (App Router)
+- **React 19** com TypeScript
+- **Tailwind CSS** para styling
+- **Zustand** para gerenciamento de estado
+- **Axios** para requisições HTTP
+- **Lucide React** para ícones
+
+### Páginas Principais
+- `/` - Dashboard com métricas
+- `/products` - Gestão de produtos
+- `/whatsapp` - Sessões WhatsApp
+- `/templates` - Templates de mensagem
+- `/contacts` - Contatos e grupos
+- `/scrapers` - Configuração de scrapers
+- `/analytics` - Relatórios e insights
+
+## 🔐 Segurança
+
+- Autenticação JWT
+- Rate limiting
+- Helmet para headers de segurança
+- CORS configurável
+- Validação com Zod
+- Containerização para isolamento
+
+## 📊 Monitoramento
+
+### Logs
+```bash
+# Logs da API
+docker-compose logs -f api
+
+# Logs do PostgreSQL
+docker-compose logs -f postgres
+
+# Todos os logs
+docker-compose logs -f
+```
+
+### Health Checks
+- API: `GET /health`
+- Containers têm health checks automáticos
+- Prometheus metrics (em desenvolvimento)
+
+## 🤝 Contribuição
+
+1. Fork o projeto
+2. Crie uma branch: `git checkout -b feature/nova-funcionalidade`
+3. Commit suas mudanças: `git commit -m 'Adiciona nova funcionalidade'`
+4. Push para a branch: `git push origin feature/nova-funcionalidade`
+5. Abra um Pull Request
+
+## 📄 Licença
+
+Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+
+---
+
+## 🆘 Troubleshooting
+
+### Docker não inicia
+```bash
+# Verificar se Docker está rodando
+docker info
+
+# Reiniciar Docker
+sudo systemctl restart docker  # Linux
+# ou restart Docker Desktop
+```
+
+### Banco não conecta
+```bash
+# Verificar se PostgreSQL está rodando
+docker-compose -f docker-compose.dev.yml ps
+
+# Recriar containers
+docker-compose -f docker-compose.dev.yml down -v
+docker-compose -f docker-compose.dev.yml up -d
+```
+
+### WhatsApp não conecta
+- Verifique se não há outra instância rodando
+- Delete arquivos em `./sessions` e reconecte
+- Use QR code válido dentro do tempo limite
+
+### Build falha
+```bash
+# Limpar tudo e reinstalar
+rm -rf node_modules packages/*/node_modules apps/*/node_modules
+pnpm install
+pnpm -w run db:generate
+```
+
+---
+
+**Desenvolvido com ❤️ para automatizar e otimizar o marketing de afiliados**

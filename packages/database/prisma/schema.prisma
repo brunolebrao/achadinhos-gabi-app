@@ -1,0 +1,474 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id              String            @id @default(cuid())
+  title           String
+  price           Float
+  originalPrice   Float?
+  discount        String?
+  imageUrl        String
+  productUrl      String            @unique
+  affiliateUrl    String?
+  platform        Platform
+  category        String
+  status          ProductStatus     @default(PENDING)
+  cupom           String?
+  ratings         Float?
+  reviewCount     Int?
+  salesCount      Int?
+  scrapedAt       DateTime          @default(now())
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  priceHistory    PriceHistory[]
+  messages        ScheduledMessage[]
+  clicks          AffiliateClick[]
+  socialPosts     SocialPost[]
+  scheduledContent ScheduledContent[]
+
+  @@index([platform, status])
+  @@index([category])
+  @@index([createdAt])
+}
+
+model PriceHistory {
+  id            String    @id @default(cuid())
+  productId     String
+  product       Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  price         Float
+  originalPrice Float?
+  discount      String?
+  recordedAt    DateTime  @default(now())
+
+  @@index([productId])
+  @@index([recordedAt])
+}
+
+model Template {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  content     String   @db.Text
+  platform    SocialPlatform? // Added for multi-platform support
+  type        TemplateType?   // Added for template types
+  category    String?
+  isDefault   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  variables   Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([platform])
+}
+
+model ScheduledMessage {
+  id           String        @id @default(cuid())
+  productId    String?
+  product      Product?      @relation(fields: [productId], references: [id], onDelete: SetNull)
+  templateId   String?
+  content      String        @db.Text
+  scheduledAt  DateTime
+  status       MessageStatus @default(PENDING)
+  sentAt       DateTime?
+  recipients   String[]
+  recipientType RecipientType @default(GROUP)
+  error        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([status, scheduledAt])
+  @@index([productId])
+}
+
+model ScraperConfig {
+  id              String    @id @default(cuid())
+  platform        Platform
+  name            String
+  isActive        Boolean   @default(true)
+  categories      String[]
+  keywords        String[]
+  minPrice        Float?
+  maxPrice        Float?
+  minDiscount     Int?
+  frequency       String    // cron expression
+  lastRun         DateTime?
+  nextRun         DateTime?
+  proxyRotation   Boolean   @default(false)
+  maxProducts     Int       @default(100)
+  config          Json?
+  userId          String?   // Optional user association for affiliate tracking
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  executions      ScraperExecution[]
+
+  @@unique([platform, name])
+  @@index([isActive, nextRun])
+  @@index([userId])
+}
+
+model ScraperExecution {
+  id            String        @id @default(cuid())
+  scraperId     String
+  scraper       ScraperConfig @relation(fields: [scraperId], references: [id], onDelete: Cascade)
+  status        JobStatus
+  startedAt     DateTime      @default(now())
+  finishedAt    DateTime?
+  productsFound Int           @default(0)
+  productsAdded Int           @default(0)
+  error         String?
+  logs          Json?
+
+  @@index([scraperId])
+  @@index([status])
+}
+
+model WhatsAppAccount {
+  id           String    @id @default(cuid())
+  name         String
+  phoneNumber  String    @unique
+  isActive     Boolean   @default(true)
+  isConnected  Boolean   @default(false)
+  sessionData  Json?
+  dailyLimit   Int       @default(300)
+  sentToday    Int       @default(0)
+  lastResetAt  DateTime  @default(now())
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  groups       Group[]   // Groups synced from this WhatsApp account
+
+  @@index([isActive, isConnected])
+}
+
+model Contact {
+  id           String    @id @default(cuid())
+  name         String
+  phoneNumber  String    @unique
+  tags         String[]
+  isBlocked    Boolean   @default(false)
+  lastSentAt   DateTime?
+  messageCount Int       @default(0)
+  clickCount   Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  groups       GroupMember[]
+
+  @@index([isBlocked])
+  @@index([tags])
+}
+
+model Group {
+  id                String    @id @default(cuid())
+  name              String
+  groupId           String    @unique // WhatsApp group ID
+  whatsAppAccountId String?   // Which WhatsApp account this group belongs to
+  whatsAppAccount   WhatsAppAccount? @relation(fields: [whatsAppAccountId], references: [id], onDelete: SetNull)
+  category          String?
+  tags              String[]
+  isActive          Boolean   @default(true)
+  lastSentAt        DateTime?
+  messageCount      Int       @default(0)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  members           GroupMember[]
+
+  @@index([category])
+  @@index([isActive])
+  @@index([whatsAppAccountId])
+}
+
+model GroupMember {
+  id        String   @id @default(cuid())
+  groupId   String
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  contactId String
+  contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  role      String   @default("member")
+  joinedAt  DateTime @default(now())
+
+  @@unique([groupId, contactId])
+  @@index([groupId])
+  @@index([contactId])
+}
+
+model AffiliateLink {
+  id           String    @id @default(cuid())
+  originalUrl  String
+  affiliateUrl String
+  shortUrl     String?
+  platform     Platform
+  productId    String?
+  createdAt    DateTime  @default(now())
+
+  clicks       AffiliateClick[]
+
+  @@index([productId])
+  @@index([shortUrl])
+}
+
+model AffiliateClick {
+  id          String        @id @default(cuid())
+  linkId      String
+  link        AffiliateLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  productId   String?
+  product     Product?      @relation(fields: [productId], references: [id], onDelete: SetNull)
+  ipAddress   String?
+  userAgent   String?
+  referrer    String?
+  clickedAt   DateTime      @default(now())
+
+  @@index([linkId])
+  @@index([productId])
+  @@index([clickedAt])
+}
+
+model Setting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       Json
+  description String?
+  updatedAt   DateTime @updatedAt
+}
+
+model User {
+  id              String           @id @default(cuid())
+  email           String           @unique
+  name            String?
+  password        String
+  role            UserRole         @default(USER)
+  isActive        Boolean          @default(true)
+  affiliateConfig AffiliateConfig?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([email])
+  @@index([role])
+}
+
+model AffiliateConfig {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // IDs de Afiliado por Plataforma
+  mercadolivreId        String?
+  amazonTag             String?
+  shopeeId              String?
+  aliexpressId          String?
+  
+  // Configurações de Tracking
+  enableTracking        Boolean  @default(true)
+  customUtmSource       String?  @default("whatsapp")
+  customUtmMedium       String?  @default("affiliate")
+  customUtmCampaign     String?
+  
+  // Métricas
+  totalClicks           Int      @default(0)
+  totalConversions      Int      @default(0)
+  estimatedRevenue      Float    @default(0)
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// New models for social media integration
+model SocialAccount {
+  id          String @id @default(cuid())
+  platform    SocialPlatform
+  accountId   String // ID da conta na plataforma
+  username    String?
+  accessToken String @db.Text
+  refreshToken String? @db.Text
+  isActive    Boolean @default(true)
+  settings    Json? // Configurações específicas da plataforma
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  posts       SocialPost[]
+
+  @@unique([platform, accountId])
+  @@index([platform, isActive])
+}
+
+model SocialPost {
+  id          String @id @default(cuid())
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  accountId   String
+  account     SocialAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  platform    SocialPlatform
+  postId      String? // ID do post na plataforma
+  content     String @db.Text
+  mediaType   String? // IMAGE, VIDEO, CAROUSEL_ALBUM, REELS
+  mediaUrls   String[]
+  hashtags    String[]
+  status      PostStatus @default(DRAFT)
+  scheduledFor DateTime?
+  publishedAt  DateTime?
+  cancelledAt DateTime?
+  deletedAt   DateTime?
+  error       String?
+  metadata    Json? // Additional data like carouselMedia, coverUrl, etc
+  analytics   Json? // Métricas da plataforma
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([platform, status])
+  @@index([productId])
+  @@index([scheduledFor])
+  @@index([accountId])
+}
+
+model ScheduledContent {
+  id          String @id @default(cuid())
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  platforms   SocialPlatform[]
+  scheduledAt DateTime
+  status      ScheduleStatus @default(PENDING)
+  content     Json // Conteúdo adaptado por plataforma
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status, scheduledAt])
+  @@index([productId])
+}
+
+model ContentTemplate {
+  id          String @id @default(cuid())
+  name        String
+  platform    SocialPlatform
+  type        TemplateType
+  dimensions  Json // Width, height, format
+  elements    Json // Template elements configuration
+  thumbnail   String?
+  isActive    Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([name, platform])
+  @@index([platform, type])
+}
+
+model Campaign {
+  id          String @id @default(cuid())
+  name        String
+  description String?
+  platforms   SocialPlatform[]
+  startDate   DateTime
+  endDate     DateTime?
+  status      CampaignStatus @default(DRAFT)
+  products    String[] // Product IDs
+  hashtags    String[]
+  settings    Json? // Campaign-specific settings
+  analytics   Json? // Performance metrics
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@index([startDate, endDate])
+}
+
+model AudienceSegment {
+  id          String @id @default(cuid())
+  name        String
+  platform    SocialPlatform
+  criteria    Json // Segmentation criteria
+  products    String[] // Product IDs
+  performance Json? // Performance metrics
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([platform])
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum Platform {
+  MERCADOLIVRE
+  SHOPEE
+  AMAZON
+  ALIEXPRESS
+}
+
+enum ProductStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SENT
+}
+
+enum MessageStatus {
+  PENDING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+}
+
+enum RecipientType {
+  CONTACT
+  GROUP
+  BROADCAST
+}
+
+// New enums for social media features
+enum SocialPlatform {
+  WHATSAPP
+  INSTAGRAM
+  TIKTOK
+}
+
+enum TemplateType {
+  MESSAGE    // WhatsApp message
+  FEED_POST  // Instagram Feed post
+  STORY      // Instagram/TikTok Story
+  REEL       // Instagram Reel
+  VIDEO      // TikTok Video
+}
+
+enum PostStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHING
+  PUBLISHED
+  FAILED
+  CANCELLED
+  DELETED
+}
+
+enum ScheduleStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
