@@ -16,6 +16,9 @@ pnpm install
 # Generate Prisma client (run after schema changes)
 cd packages/database && pnpm prisma generate
 
+# Setup Chrome/Puppeteer (required for WhatsApp integration)
+pnpm setup:chrome
+
 # Run all applications
 pnpm dev
 
@@ -41,6 +44,20 @@ pnpm format       # Format with Prettier
 ```bash
 pnpm build        # Build all applications
 pnpm build --filter=api  # Build specific app
+```
+
+### Chrome/Puppeteer Setup
+```bash
+# Complete setup (dependencies + Prisma + Chrome)
+pnpm setup
+
+# Chrome setup only
+pnpm setup:chrome
+
+# Chrome dependencies only (Linux/macOS)
+pnpm setup:deps
+# or
+./install-chrome-deps.sh
 ```
 
 ## Architecture Overview
@@ -100,6 +117,64 @@ Required environment variables:
 - `DATABASE_URL`: PostgreSQL connection string
 - `JWT_SECRET`: For API authentication (not yet implemented)
 - Platform affiliate IDs: `MERCADOLIVRE_AFFILIATE_ID`, `SHOPEE_AFFILIATE_ID`, etc.
+
+## Troubleshooting
+
+### Instagram Connection Issues
+
+If Instagram integration is not working:
+
+1. **Validate Setup (Automated)**:
+   ```bash
+   pnpm validate:instagram
+   ```
+
+2. **Manual Checklist**:
+   - ✅ Environment variables configured (`INSTAGRAM_APP_ID`, `INSTAGRAM_APP_SECRET`, `INSTAGRAM_CALLBACK_URL`)
+   - ✅ Facebook App created at https://developers.facebook.com/
+   - ✅ Instagram Basic Display product added to Facebook App  
+   - ✅ Valid OAuth Redirect URI configured: `http://localhost:3001/api/auth/instagram/oauth/callback`
+   - ✅ Instagram account connected to a Facebook Page (Business/Creator account required)
+
+3. **Common Issues & Solutions**:
+   - **"No Instagram Business Account found"**: Connect your Instagram to a Facebook Page and switch to Business/Creator account
+   - **"Invalid redirect URI"**: Ensure callback URL matches exactly in Facebook App settings
+   - **"App not configured"**: Verify App ID and Secret are correct in environment variables
+   - **CORS errors**: Check `CORS_ORIGIN` is set to `http://localhost:3000`
+
+4. **Development vs Production**:
+   - Development: Use test users and sandbox mode
+   - Production: Submit app for review to get permissions approved
+
+### Chrome/Puppeteer Issues
+
+If you encounter "Chrome dependencies not installed" or "Failed to launch browser" errors:
+
+1. **Quick Fix (Automatic)**:
+   ```bash
+   pnpm setup:chrome
+   ```
+
+2. **Manual Fix (Step by Step)**:
+   ```bash
+   # Install Chrome dependencies
+   ./install-chrome-deps.sh
+   
+   # Or install Chrome manually:
+   # macOS: brew install --cask google-chrome
+   # Ubuntu/Debian: wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+   # CentOS/RHEL: sudo dnf install https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm
+   ```
+
+3. **System-specific Solutions**:
+   - **macOS**: Chrome auto-detected at `/Applications/Google Chrome.app`
+   - **Linux**: Uses system Chrome or falls back to Puppeteer bundled Chrome
+   - **Windows**: Manual installation required from https://www.google.com/chrome/
+
+4. **Configuration Details**:
+   - Chrome detection is handled automatically by `ChromeDetector` class
+   - Configuration is dynamic based on detected system and Chrome installation
+   - No more hardcoded Chrome paths - fully cross-platform compatible
 
 ## Development Patterns
 

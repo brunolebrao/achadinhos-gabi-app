@@ -35,9 +35,10 @@ class InstagramAuthService {
   async connect(userId?: string): Promise<InstagramAuthResponse> {
     const params = new URLSearchParams()
     if (userId) params.set('userId', userId)
+    params.set('redirectUri', `${window.location.origin}/social-accounts`)
     
     const response = await apiClient.get<InstagramAuthResponse>(
-      `/auth/instagram/connect?${params.toString()}`
+      `/auth/instagram/oauth/authorize?${params.toString()}`
     )
     
     return response
@@ -57,101 +58,60 @@ class InstagramAuthService {
    * Get connected Instagram accounts
    */
   async getAccounts(): Promise<{ accounts: InstagramAccount[] }> {
-    return apiClient.get('/auth/instagram/accounts')
+    try {
+      const response = await apiClient.get<{ data: any[] }>('/social-accounts')
+      
+      // Filter and format Instagram accounts
+      const instagramAccounts = response.data
+        ?.filter(acc => acc.platform === 'INSTAGRAM')
+        ?.map(acc => ({
+          id: acc.id,
+          platform: 'INSTAGRAM' as const,
+          username: acc.username || '@unknown',
+          accountId: acc.accountId,
+          isActive: acc.isActive,
+          createdAt: acc.createdAt,
+          settings: acc.settings
+        })) || []
+      
+      return { accounts: instagramAccounts }
+    } catch (error) {
+      console.error('Failed to fetch Instagram accounts:', error)
+      return { accounts: [] }
+    }
   }
 
   /**
    * Disconnect Instagram account
    */
   async disconnect(accountId: string): Promise<{ success: boolean }> {
-    return apiClient.delete(`/auth/instagram/disconnect/${accountId}`)
+    return apiClient.delete(`/auth/instagram/oauth/disconnect/${accountId}`)
   }
 
   /**
    * Refresh access token
    */
   async refreshToken(accountId: string): Promise<{ success: boolean; expiresAt?: string }> {
-    return apiClient.post('/auth/instagram/refresh-token', { accountId })
+    return apiClient.post('/auth/instagram/oauth/refresh-token', { accountId })
   }
 
   /**
-   * Open Instagram OAuth in popup window
+   * Connect Instagram using direct redirect
    */
   async connectWithPopup(userId?: string): Promise<InstagramAccount | null> {
     try {
-      // Get auth URL
-      const { authUrl, state, mockMode } = await this.connect(userId)
-      
-      // If in mock mode, redirect directly
-      if (mockMode) {
-        window.location.href = authUrl
-        return null // Page will redirect, so return null
+      // Store user ID in localStorage for callback
+      if (userId) {
+        localStorage.setItem('instagram_user_id', userId)
       }
       
-      // Calculate popup position
-      const width = 600
-      const height = 700
-      const left = window.screenX + (window.outerWidth - width) / 2
-      const top = window.screenY + (window.outerHeight - height) / 2
+      // Redirect directly to Instagram OAuth
+      window.location.href = `/api/auth/instagram/oauth/authorize?${new URLSearchParams({
+        userId: userId || '',
+        redirectUri: `${window.location.origin}/social-accounts`
+      }).toString()}`
       
-      // Open popup
-      const popup = window.open(
-        authUrl,
-        'instagram-auth',
-        `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no`
-      )
-      
-      if (!popup) {
-        throw new Error('Popup blocked. Please allow popups for this site.')
-      }
-      
-      // Wait for callback
-      return new Promise((resolve, reject) => {
-        const checkInterval = setInterval(() => {
-          try {
-            if (popup.closed) {
-              clearInterval(checkInterval)
-              reject(new Error('Authentication cancelled'))
-              return
-            }
-            
-            // Check if popup URL contains callback
-            const popupUrl = popup.location.href
-            if (popupUrl.includes('/social-accounts')) {
-              // Extract code from URL
-              const url = new URL(popupUrl)
-              const code = url.searchParams.get('instagram_code')
-              
-              if (code) {
-                clearInterval(checkInterval)
-                popup.close()
-                
-                // Exchange code for token
-                this.exchangeToken(code, userId || '')
-                  .then(result => {
-                    if (result.success && result.account) {
-                      resolve(result.account)
-                    } else {
-                      reject(new Error(result.message || 'Failed to connect Instagram'))
-                    }
-                  })
-                  .catch(reject)
-              }
-            }
-          } catch (e) {
-            // Cross-origin error is expected, ignore it
-          }
-        }, 1000)
-        
-        // Timeout after 5 minutes
-        setTimeout(() => {
-          clearInterval(checkInterval)
-          if (popup && !popup.closed) {
-            popup.close()
-          }
-          reject(new Error('Authentication timeout'))
-        }, 5 * 60 * 1000)
-      })
+      return null // Will redirect, so return null
     } catch (error) {
       console.error('Instagram auth error:', error)
       throw error
@@ -163,48 +123,43 @@ class InstagramAuthService {
    */
   async handleCallback(): Promise<InstagramAccount | null> {
     try {
-      // Check if we have a code in the URL
+      // Check URL params for OAuth callback
       const urlParams = new URLSearchParams(window.location.search)
-      const code = urlParams.get('instagram_code')
+      const success = urlParams.get('success')
       const error = urlParams.get('error')
+      const message = urlParams.get('message')
+      const username = urlParams.get('username')
+      
+      // Clean up URL first
+      const cleanUrl = new URL(window.location.href)
+      cleanUrl.searchParams.delete('success')
+      cleanUrl.searchParams.delete('error')
+      cleanUrl.searchParams.delete('message')
+      cleanUrl.searchParams.delete('platform')
+      cleanUrl.searchParams.delete('username')
+      window.history.replaceState({}, '', cleanUrl.toString())
       
       if (error) {
-        throw new Error(error)
+        throw new Error(message || error)
       }
       
-      if (!code) {
-        return null
-      }
-      
-      // Get userId from state or local storage
-      const userId = urlParams.get('userId') || localStorage.getItem('userId') || ''
-      
-      // Exchange code for token
-      const result = await this.exchangeToken(code, userId)
-      
-      if (result.success && result.account) {
-        // Clean up URL
-        const url = new URL(window.location.href)
-        url.searchParams.delete('instagram_code')
-        url.searchParams.delete('state')
-        url.searchParams.delete('userId')
-        url.searchParams.delete('error')
-        window.history.replaceState({}, '', url.toString())
+      if (success === 'true') {
+        // Refresh accounts to get the new connected account
+        const { accounts } = await this.getAccounts()
+        const newAccount = accounts.find(acc => acc.username === `@${username}`)
         
-        return result.account
+        // Clean up localStorage
+        localStorage.removeItem('instagram_user_id')
+        
+        return newAccount || null
       }
       
-      throw new Error(result.message || 'Failed to connect Instagram')
+      return null
     } catch (error) {
       console.error('Instagram callback error:', error)
       
-      // Clean up URL on error
-      const url = new URL(window.location.href)
-      url.searchParams.delete('instagram_code')
-      url.searchParams.delete('state')
-      url.searchParams.delete('userId')
-      url.searchParams.delete('error')
-      window.history.replaceState({}, '', url.toString())
+      // Clean up localStorage on error
+      localStorage.removeItem('instagram_user_id')
       
       throw error
     }

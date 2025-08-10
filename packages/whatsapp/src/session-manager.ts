@@ -7,6 +7,7 @@ import {
   SessionEventHandlers,
   WhatsAppClientConfig
 } from './types'
+import { ChromeDetector } from './utils/chrome-detector'
 import path from 'path'
 import QRCode from 'qrcode'
 
@@ -43,14 +44,15 @@ export class SessionManager {
       return
     }
 
+    // Get dynamic Puppeteer configuration
+    const puppeteerOptions = await ChromeDetector.getRecommendedPuppeteerOptions()
+
     const config: WhatsAppClientConfig = {
       sessionId: accountId,
       sessionPath: this.sessionPath,
       qrMaxRetries: 3,
       restartOnAuthFail: true,
-      puppeteerOptions: {
-        executablePath: '/home/bruno-lebrao/.cache/puppeteer/chrome/linux-121.0.6167.85/chrome-linux64/chrome'
-      }
+      puppeteerOptions
     }
 
     const handlers: SessionEventHandlers = {

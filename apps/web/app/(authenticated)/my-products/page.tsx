@@ -436,6 +436,5 @@ export default function MyProductsPage() {
           </div>
         )}
       </div>
-    </div>
   )
 }

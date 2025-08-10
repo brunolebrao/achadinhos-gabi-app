@@ -61,7 +61,7 @@ export default function ContentStudioPage() {
     try {
       const { accounts } = await instagramAuthService.getAccounts()
       setInstagramAccounts(accounts)
-      if (accounts.length > 0 && !selectedAccount) {
+      if (accounts.length > 0 && !selectedAccount && accounts[0]) {
         setSelectedAccount(accounts[0].accountId)
       }
     } catch (error) {

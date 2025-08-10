@@ -9,7 +9,12 @@
     "check-types": "turbo run check-types",
     "db:generate": "turbo run db:generate",
     "db:push": "turbo run db:push",
-    "db:migrate": "turbo run db:migrate"
+    "db:migrate": "turbo run db:migrate",
+    "setup": "pnpm install && pnpm db:generate && node scripts/setup-chrome.js",
+    "setup:chrome": "node scripts/setup-chrome.js",
+    "setup:deps": "./install-chrome-deps.sh",
+    "validate:instagram": "tsx scripts/validate-instagram-setup.js",
+    "setup:instagram": "node scripts/setup-instagram-token.js"
   },
   "devDependencies": {
     "prettier": "^3.6.2",
@@ -22,7 +27,9 @@
   },
   "dependencies": {
     "@types/bcrypt": "^6.0.0",
+    "axios": "^1.11.0",
     "bcrypt": "^6.0.0",
+    "dotenv": "^17.2.1",
     "tsx": "^4.7.1"
   }
 }

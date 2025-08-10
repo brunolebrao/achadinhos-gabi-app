@@ -116,8 +116,11 @@ async function bootstrap() {
   await fastify.register(import('./routes/affiliate-config'), { prefix: '/api' })
   await fastify.register(import('./routes/social-templates'), { prefix: '/api/social-templates' })
   await fastify.register(import('./routes/content-generation'), { prefix: '/api/content' })
+  await fastify.register(import('./routes/social-accounts'), { prefix: '/api/social-accounts' })
+  await fastify.register(import('./routes/auth-instagram-oauth'), { prefix: '/api/auth/instagram/oauth' })
   await fastify.register(import('./routes/auth-instagram'), { prefix: '/api/auth/instagram' })
   await fastify.register(import('./routes/auth-instagram-manual'), { prefix: '/api/auth/instagram-manual' })
+  await fastify.register(import('./routes/auth-instagram-manual-token'), { prefix: '/api/auth/instagram/manual' })
   await fastify.register(import('./routes/instagram-publisher'), { prefix: '/api/instagram' })
   await fastify.register(import('./routes/scrapers-status'), { prefix: '/api/scrapers' })
 

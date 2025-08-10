@@ -210,14 +210,14 @@ export default function ScrapersPage() {
         const response = responses[i]
         const scraperId = scraperIds[i]
         
-        if (response.ok) {
+        if (response && response.ok) {
           const executions: ScraperExecution[] = await response.json()
           // Get the most recent execution that's still running or just finished
           const activeExecution = executions.find(exec => 
             exec.status === 'RUNNING' || exec.status === 'PENDING' || 
-            (exec.status === 'SUCCESS' && runningScrapers.has(scraperId))
+            (exec.status === 'SUCCESS' && scraperId && runningScrapers.has(scraperId))
           )
-          if (activeExecution) {
+          if (activeExecution && scraperId) {
             newExecutions.set(scraperId, activeExecution)
           }
         }
