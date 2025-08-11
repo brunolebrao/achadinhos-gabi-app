@@ -227,7 +227,7 @@ export class SocialPublisherService {
         }
       } catch (error) {
         logger.error(`Failed to publish to ${platform}:`, error)
-        results.push({ platform, error: error.message })
+        results.push({ platform, error: error instanceof Error ? error.message : 'Unknown error' })
       }
     }
 
@@ -250,7 +250,7 @@ export class SocialPublisherService {
         product: true
       },
       orderBy: {
-        scheduledAt: 'asc'
+        createdAt: 'asc'
       }
     })
   }

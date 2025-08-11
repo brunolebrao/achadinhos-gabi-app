@@ -186,8 +186,17 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
   fastify.post('/campaign', async (request, reply) => {
     const campaign = bulkCampaignSchema.parse(request.body)
 
+    console.log('🚀 Starting campaign creation:', {
+      name: campaign.name,
+      productIds: campaign.productIds.length,
+      targetType: campaign.targetType,
+      templateMode: campaign.templateMode,
+      groupIds: campaign.groupIds?.length || 0
+    })
+
     try {
       // 1. Get products
+      console.log(`🔍 Fetching ${campaign.productIds.length} products...`)
       const products = await prisma.product.findMany({
         where: {
           id: { in: campaign.productIds },
@@ -195,14 +204,31 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
         }
       })
 
+      console.log(`📦 Found ${products.length} approved products out of ${campaign.productIds.length} requested`)
+      
       if (products.length === 0) {
-        return reply.code(400).send({ error: 'No approved products found' })
+        console.log('❌ Campaign failed: No approved products found')
+        const allProducts = await prisma.product.findMany({
+          where: { id: { in: campaign.productIds } },
+          select: { id: true, status: true, title: true }
+        })
+        console.log('📊 Product statuses:', allProducts.map(p => ({ 
+          title: p.title.substring(0, 30) + '...', 
+          status: p.status 
+        })))
+        return reply.code(400).send({ 
+          error: 'No approved products found',
+          details: `Found ${campaign.productIds.length} products but none are APPROVED`,
+          productStatuses: allProducts.map(p => ({ id: p.id, status: p.status }))
+        })
       }
 
       // 2. Get recipients based on target type
+      console.log(`👥 Searching for recipients with targetType: ${campaign.targetType}`)
       let recipients: Array<{ id: string; type: 'CONTACT' | 'GROUP' }> = []
 
       if (campaign.targetType === 'CONTACTS' || campaign.targetType === 'ALL') {
+        console.log('📞 Searching for contacts...')
         const contacts = await prisma.contact.findMany({
           where: {
             isBlocked: false,
@@ -212,18 +238,22 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
           },
           select: { id: true, phoneNumber: true }
         })
+        console.log(`📞 Found ${contacts.length} active contacts`)
         recipients.push(...contacts.map(c => ({ id: c.phoneNumber, type: 'CONTACT' as const })))
       }
 
       if (campaign.targetType === 'GROUPS' || campaign.targetType === 'ALL') {
+        console.log('👥 Searching for WhatsApp groups...')
         let groupsQuery: any = {
           isActive: true
         }
 
         // If specific group IDs are provided, filter by those
         if (campaign.groupIds && campaign.groupIds.length > 0) {
+          console.log(`🎯 Filtering by specific group IDs: ${campaign.groupIds.length} groups`)
           groupsQuery.groupId = { in: campaign.groupIds }
         } else if (campaign.tags && campaign.tags.length > 0) {
+          console.log(`🏷️ Filtering by tags: ${campaign.tags.join(', ')}`)
           // Otherwise use tag filtering
           groupsQuery.tags = { hasSome: campaign.tags }
         }
@@ -233,19 +263,51 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
           select: { id: true, groupId: true, name: true }
         })
 
-        console.log(`📊 Found ${groups.length} groups for campaign:`, groups.map(g => ({ id: g.groupId, name: g.name })))
+        console.log(`👥 Found ${groups.length} groups for campaign:`)
+        groups.forEach((g, i) => {
+          console.log(`  ${i + 1}. ${g.name} (${g.groupId})`)
+        })
         recipients.push(...groups.map(g => ({ id: g.groupId, type: 'GROUP' as const })))
       }
 
+      console.log(`📊 Total recipients found: ${recipients.length} (${recipients.filter(r => r.type === 'CONTACT').length} contacts, ${recipients.filter(r => r.type === 'GROUP').length} groups)`)
+
       if (recipients.length === 0) {
-        return reply.code(400).send({ error: 'No recipients found' })
+        console.log('❌ Campaign failed: No recipients found')
+        // Debug info for troubleshooting
+        if (campaign.targetType === 'GROUPS' || campaign.targetType === 'ALL') {
+          const totalGroups = await prisma.group.count()
+          const activeGroups = await prisma.group.count({ where: { isActive: true } })
+          console.log(`📊 Groups debug: ${activeGroups} active out of ${totalGroups} total groups`)
+          
+          if (campaign.groupIds && campaign.groupIds.length > 0) {
+            const foundGroups = await prisma.group.findMany({
+              where: { groupId: { in: campaign.groupIds } },
+              select: { groupId: true, name: true, isActive: true }
+            })
+            console.log('🔍 Specific group search results:', foundGroups)
+          }
+        }
+        return reply.code(400).send({ 
+          error: 'No recipients found',
+          debug: {
+            targetType: campaign.targetType,
+            groupIds: campaign.groupIds?.length || 0,
+            tags: campaign.tags?.length || 0
+          }
+        })
       }
 
       // 3. Create messages for each product
+      console.log(`📝 Creating messages for ${products.length} products...`)
       const messages: any[] = []
       let currentScheduledTime = campaign.scheduledAt || new Date()
+      let productsProcessed = 0
+      let templatesNotFound = 0
 
       for (const product of products) {
+        console.log(`📦 Processing product: ${product.title.substring(0, 50)}...`)
+        
         // Map product to template format
         const productForTemplate: ProductForTemplate = {
           id: product.id,
@@ -263,11 +325,16 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
         // Get or suggest template
         let templateId = campaign.templateId
         if (campaign.templateMode === 'AUTO_SUGGEST') {
+          console.log(`🤖 Auto-suggesting template for product with ${product.discount || '0%'} discount...`)
           templateId = await suggestTemplate(productForTemplate)
+          console.log(`💡 Suggested template ID: ${templateId || 'none'}`)
+        } else {
+          console.log(`📋 Using specific template ID: ${templateId}`)
         }
 
         if (!templateId) {
-          console.warn(`No template found for product ${product.title}`)
+          console.warn(`⚠️ No template found for product ${product.title.substring(0, 30)}... (discount: ${product.discount || 'none'}, platform: ${product.platform})`)
+          templatesNotFound++
           continue
         }
 
@@ -277,11 +344,16 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
         })
 
         if (!template) {
-          console.warn(`Template ${templateId} not found`)
+          console.warn(`❌ Template ${templateId} not found in database`)
+          templatesNotFound++
           continue
         }
 
+        console.log(`✅ Using template: ${template.name} (${template.category})`)
         const content = await renderTemplateWithProduct(template.content, productForTemplate)
+        console.log(`📄 Generated message preview: ${content.substring(0, 100)}...`)
+
+        productsProcessed++
 
         // Split recipients into chunks
         const recipientChunks = []
@@ -309,14 +381,39 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
       }
 
       // 4. Bulk create messages
+      console.log(`💾 Saving ${messages.length} messages to database...`)
+      console.log(`📊 Campaign summary:`)
+      console.log(`  - Products processed: ${productsProcessed}`)
+      console.log(`  - Templates not found: ${templatesNotFound}`)
+      console.log(`  - Messages created: ${messages.length}`)
+      console.log(`  - Recipients reached: ${recipients.length}`)
+
+      if (messages.length === 0) {
+        console.log('❌ Campaign failed: No messages to create')
+        return reply.code(400).send({ 
+          error: 'No messages created',
+          details: `Processed ${productsProcessed} products but no messages were generated. Check if templates exist.`,
+          debug: {
+            productsRequested: campaign.productIds.length,
+            productsApproved: products.length,
+            productsProcessed,
+            templatesNotFound
+          }
+        })
+      }
+
       const result = await prisma.scheduledMessage.createMany({
         data: messages
       })
 
+      console.log(`✅ Campaign created successfully! ${result.count} messages saved`)
+      console.log(`⏰ First message scheduled for: ${new Date(messages[0]?.scheduledAt).toISOString()}`)
+      console.log(`🏁 Last message scheduled for: ${currentScheduledTime.toISOString()}`)
+
       return reply.code(201).send({
         campaign: {
           name: campaign.name,
-          productsProcessed: products.length,
+          productsProcessed,
           messagesCreated: result.count,
           recipientsReached: recipients.length,
           estimatedDuration: Math.ceil(messages.length * campaign.delayBetweenMessages / 60), // minutes
@@ -324,16 +421,20 @@ export default async function messagesRoutes(fastify: FastifyInstance) {
           endTime: currentScheduledTime
         },
         summary: {
-          products: products.map(p => ({ id: p.id, title: p.title })),
+          products: products.slice(0, productsProcessed).map(p => ({ id: p.id, title: p.title })),
           recipientTypes: {
             contacts: recipients.filter(r => r.type === 'CONTACT').length,
             groups: recipients.filter(r => r.type === 'GROUP').length
           }
+        },
+        debug: {
+          templatesNotFound,
+          messagesPerProduct: Math.ceil(messages.length / productsProcessed)
         }
       })
 
     } catch (error) {
-      console.error('Campaign creation failed:', error)
+      console.error('❌ Campaign creation failed:', error)
       return reply.code(500).send({ 
         error: 'Failed to create campaign',
         details: error instanceof Error ? error.message : 'Unknown error'

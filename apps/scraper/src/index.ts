@@ -3,9 +3,9 @@ import cron from 'node-cron'
 import { prisma } from '@repo/database'
 import { ScraperManager } from './lib/scraper-manager'
 import { MercadoLivreScraper } from './scrapers/mercadolivre'
-import { ShopeeScraper } from './scrapers/shopee'
-import { AmazonScraper } from './scrapers/amazon'
-import { AliExpressScraper } from './scrapers/aliexpress'
+// Use V2 scrapers temporarily while fixing anti-bot issues
+import { ShopeeScraperV2 } from './scrapers/shopee-v2'
+import { AmazonScraperV2 } from './scrapers/amazon-v2'
 import { logger } from './lib/logger'
 import { progress } from './lib/progress'
 import chalk from 'chalk'
@@ -21,9 +21,8 @@ async function bootstrap() {
   const scraperManager = new ScraperManager()
 
   scraperManager.registerScraper('MERCADOLIVRE', new MercadoLivreScraper())
-  scraperManager.registerScraper('SHOPEE', new ShopeeScraper())
-  scraperManager.registerScraper('AMAZON', new AmazonScraper())
-  scraperManager.registerScraper('ALIEXPRESS', new AliExpressScraper())
+  scraperManager.registerScraper('SHOPEE', new ShopeeScraperV2())
+  scraperManager.registerScraper('AMAZON', new AmazonScraperV2())
 
   // Check for pending executions every minute
   cron.schedule('* * * * *', async () => {
@@ -222,7 +221,7 @@ async function bootstrap() {
     'Scrapers Agendados': 'A cada 15 minutos', 
     'Limpeza de Travamentos': 'A cada 10 minutos',
     'Reset de Limites WhatsApp': 'A cada hora',
-    'Scrapers Registrados': '4 (ML, Shopee, Amazon, AliExpress)',
+    'Scrapers Registrados': '3 (Mercado Livre, Shopee, Amazon)',
     'Ambiente': process.env.NODE_ENV || 'development'
   })
   

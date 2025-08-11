@@ -129,43 +129,43 @@ export class StoryPublisher {
       const sticker = story.stickerAssets[0]
       
       switch (sticker.type) {
-        case 'location':
-          params.location_id = sticker.locationId
+        case 'LOCATION':
+          params.location_id = (sticker as any).locationId
           break
-        case 'hashtag':
-          params.hashtag = sticker.hashtag
+        case 'HASHTAG':
+          params.hashtag = (sticker as any).hashtag
           break
-        case 'mention':
+        case 'MENTION':
           params.user_tags = JSON.stringify([{
-            username: sticker.username,
-            x: sticker.x || 0.5,
-            y: sticker.y || 0.5
+            username: (sticker as any).username,
+            x: (sticker as any).x || 0.5,
+            y: (sticker as any).y || 0.5
           }])
           break
-        case 'poll':
+        case 'POLL':
           params.interactive_media_poll = JSON.stringify({
-            question: sticker.question,
-            options: sticker.options || ['Yes', 'No']
+            question: (sticker as any).question,
+            options: (sticker as any).options || ['Yes', 'No']
           })
           break
-        case 'question':
+        case 'QUESTION':
           params.interactive_media_question = JSON.stringify({
-            question: sticker.question,
-            text_color: sticker.textColor || '#000000',
-            background_color: sticker.backgroundColor || '#FFFFFF'
+            question: (sticker as any).question,
+            text_color: (sticker as any).textColor || '#000000',
+            background_color: (sticker as any).backgroundColor || '#FFFFFF'
           })
           break
-        case 'quiz':
+        case 'QUIZ':
           params.interactive_media_quiz = JSON.stringify({
-            question: sticker.question,
-            options: sticker.options,
-            correct_answer: sticker.correctAnswer
+            question: (sticker as any).question,
+            options: (sticker as any).options,
+            correct_answer: (sticker as any).correctAnswer
           })
           break
-        case 'slider':
+        case 'SLIDER':
           params.interactive_media_slider = JSON.stringify({
-            question: sticker.question,
-            emoji: sticker.emoji || '😍'
+            question: (sticker as any).question,
+            emoji: (sticker as any).emoji || '😍'
           })
           break
       }

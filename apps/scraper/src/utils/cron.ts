@@ -87,7 +87,7 @@ export function calculateNextRun(frequency: string, isRetry = false): Date {
         nextRun.setDate(nextRun.getDate() + 1)
       }
       
-      nextRun.setHours(nextHour)
+      nextRun.setHours(nextHour || 0)
     } else {
       // Specific hour and minute
       const targetHour = parseInt(hour)

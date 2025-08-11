@@ -1,22 +1,22 @@
 import { Product } from '@repo/database'
 import { 
   ImageGenerator, 
-  VideoGenerator, 
-  StoryCreator,
+  // VideoGenerator, // Temporarily disabled
+  // StoryCreator, // Temporarily disabled
   ContentOptimizer 
 } from '@repo/content-generator'
 import { logger } from '../utils/logger'
 
 export class ContentGenerator {
   private imageGenerator: ImageGenerator
-  private videoGenerator: VideoGenerator
-  private storyCreator: StoryCreator
+  // private videoGenerator: VideoGenerator // Temporarily disabled
+  // private storyCreator: StoryCreator // Temporarily disabled
   private optimizer: ContentOptimizer
 
   constructor() {
     this.imageGenerator = new ImageGenerator()
-    this.videoGenerator = new VideoGenerator()
-    this.storyCreator = new StoryCreator()
+    // this.videoGenerator = new VideoGenerator() // Temporarily disabled
+    // this.storyCreator = new StoryCreator() // Temporarily disabled
     this.optimizer = new ContentOptimizer()
   }
 
@@ -59,80 +59,13 @@ export class ContentGenerator {
   }
 
   async generateForTikTok(product: any): Promise<any> {
-    try {
-      // Generate product video
-      const videoConfig = {
-        duration: 15,
-        fps: 30,
-        resolution: '1080p' as const,
-        format: 'mp4' as const
-      }
-
-      const videoBuffer = await this.videoGenerator.generateProductVideo(
-        {
-          title: product.title,
-          price: product.price,
-          originalPrice: product.originalPrice,
-          discount: product.discount,
-          imageUrl: product.imageUrl,
-          brand: product.brand,
-          rating: product.ratings
-        },
-        'tiktok',
-        videoConfig
-      )
-
-      // Upload to CDN or return base64
-      const url = await this.uploadToStorage(videoBuffer, 'tiktok-video.mp4')
-
-      return {
-        url,
-        type: 'video',
-        platform: 'tiktok'
-      }
-    } catch (error) {
-      logger.error('Failed to generate TikTok content:', error)
-      throw error
-    }
+    // Temporarily disabled - VideoGenerator not available
+    throw new Error('TikTok video generation temporarily disabled')
   }
 
   async generateStory(product: any, platform: 'instagram' | 'tiktok'): Promise<any> {
-    try {
-      const storyBuffer = await this.storyCreator.createProductStory(
-        {
-          title: product.title,
-          price: product.price,
-          originalPrice: product.originalPrice,
-          discount: product.discount,
-          imageUrl: product.imageUrl,
-          brand: product.brand,
-          rating: product.ratings
-        },
-        platform
-      )
-
-      // Optimize for platform
-      const optimizedBuffer = await this.optimizer.optimizeForPlatform(
-        storyBuffer,
-        platform,
-        'story'
-      )
-
-      // Upload to CDN
-      const url = await this.uploadToStorage(
-        optimizedBuffer,
-        `${platform}-story.jpg`
-      )
-
-      return {
-        url,
-        type: 'story',
-        platform
-      }
-    } catch (error) {
-      logger.error(`Failed to generate ${platform} story:`, error)
-      throw error
-    }
+    // Temporarily disabled - StoryCreator not available
+    throw new Error('Story generation temporarily disabled')
   }
 
   async generateCarousel(products: any[], platform: 'instagram'): Promise<any> {
@@ -180,45 +113,8 @@ export class ContentGenerator {
     platform: 'instagram' | 'tiktok',
     template: 'flash-sale' | 'countdown' | 'carousel' = 'carousel'
   ): Promise<any> {
-    try {
-      const videoConfig = {
-        duration: platform === 'tiktok' ? 30 : 60,
-        fps: 30,
-        resolution: '1080p' as const,
-        format: 'mp4' as const
-      }
-
-      const videoBuffer = await this.videoGenerator.generatePromoVideo(
-        products.map(p => ({
-          title: p.title,
-          price: p.price,
-          originalPrice: p.originalPrice,
-          discount: p.discount,
-          imageUrl: p.imageUrl,
-          brand: p.brand,
-          rating: p.ratings
-        })),
-        platform,
-        videoConfig,
-        template
-      )
-
-      // Upload to CDN
-      const url = await this.uploadToStorage(
-        videoBuffer,
-        `${platform}-promo-${template}.mp4`
-      )
-
-      return {
-        url,
-        type: 'video',
-        platform,
-        template
-      }
-    } catch (error) {
-      logger.error('Failed to generate promo video:', error)
-      throw error
-    }
+    // Temporarily disabled - VideoGenerator not available
+    throw new Error('Promo video generation temporarily disabled')
   }
 
   private async uploadToStorage(buffer: Buffer, filename: string): Promise<string> {

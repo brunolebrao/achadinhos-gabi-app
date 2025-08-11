@@ -5,7 +5,7 @@ import { ProductFilter } from '@repo/shared'
 import { authenticate, authorize } from '../middleware/auth'
 
 const productFilterSchema = z.object({
-  platform: z.enum(['MERCADOLIVRE', 'SHOPEE', 'AMAZON', 'ALIEXPRESS']).optional(),
+  platform: z.enum(['MERCADOLIVRE', 'SHOPEE', 'AMAZON']).optional(),
   category: z.string().optional(),
   status: z.enum(['PENDING', 'APPROVED', 'REJECTED', 'SENT']).optional(),
   minPrice: z.coerce.number().positive().optional(),
@@ -24,7 +24,7 @@ const productSchema = z.object({
   imageUrl: z.string().url(),
   productUrl: z.string().url(),
   affiliateUrl: z.string().url().optional(),
-  platform: z.enum(['MERCADOLIVRE', 'SHOPEE', 'AMAZON', 'ALIEXPRESS']),
+  platform: z.enum(['MERCADOLIVRE', 'SHOPEE', 'AMAZON']),
   category: z.string(),
   cupom: z.string().optional(),
   ratings: z.number().min(0).max(5).optional(),
@@ -33,6 +33,48 @@ const productSchema = z.object({
 })
 
 export default async function productsRoutes(fastify: FastifyInstance) {
+  // Test endpoint - list all products grouped by platform
+  fastify.get('/test/all', async (request, reply) => {
+    try {
+      const productsByPlatform = await prisma.product.groupBy({
+        by: ['platform'],
+        _count: true
+      })
+      
+      const samples = await Promise.all([
+        prisma.product.findFirst({
+          where: { platform: 'MERCADOLIVRE' },
+          orderBy: { createdAt: 'desc' }
+        }),
+        prisma.product.findFirst({
+          where: { platform: 'AMAZON' },
+          orderBy: { createdAt: 'desc' }
+        }),
+        prisma.product.findFirst({
+          where: { platform: 'SHOPEE' },
+          orderBy: { createdAt: 'desc' }
+        })
+      ])
+      
+      return {
+        summary: productsByPlatform.map(p => ({
+          platform: p.platform,
+          count: p._count
+        })),
+        samples: samples.filter(s => s !== null).map(s => ({
+          platform: s!.platform,
+          title: s!.title.substring(0, 60),
+          price: s!.price,
+          createdAt: s!.createdAt
+        })),
+        total: productsByPlatform.reduce((sum, p) => sum + p._count, 0)
+      }
+    } catch (error) {
+      console.error('Test endpoint error:', error)
+      return reply.status(500).send({ error: String(error) })
+    }
+  })
+  
   // Get user's products (from their scrapers)
   fastify.get('/user', { preHandler: [authenticate] }, async (request, reply) => {
     const user = (request as any).user

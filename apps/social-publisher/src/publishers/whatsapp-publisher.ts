@@ -13,6 +13,7 @@ export class WhatsAppPublisher {
   async initialize(): Promise<void> {
     // Initialize WhatsApp client
     this.whatsappClient = new WhatsAppClient({
+      sessionId: 'social-publisher',
       sessionPath: process.env.WHATSAPP_SESSION_PATH || './sessions'
     })
 
@@ -31,8 +32,11 @@ export class WhatsAppPublisher {
     if (content.groups && content.groups.length > 0) {
       for (const groupId of content.groups) {
         try {
-          await this.whatsappClient.sendMessage(groupId, content.message, {
-            mediaUrl: content.mediaUrl
+          await this.whatsappClient.sendMessage({
+            to: groupId,
+            message: content.message,
+            type: content.mediaUrl ? 'image' : 'text',
+            media: content.mediaUrl ? { url: content.mediaUrl, caption: content.message } : undefined
           })
           
           results.push({
@@ -55,7 +59,7 @@ export class WhatsAppPublisher {
             recipient: groupId,
             type: 'group',
             status: 'failed',
-            error: error.message
+            error: error instanceof Error ? error.message : 'Unknown error'
           })
         }
       }
@@ -65,8 +69,11 @@ export class WhatsAppPublisher {
     if (content.contacts && content.contacts.length > 0) {
       for (const contactNumber of content.contacts) {
         try {
-          await this.whatsappClient.sendMessage(contactNumber, content.message, {
-            mediaUrl: content.mediaUrl
+          await this.whatsappClient.sendMessage({
+            to: contactNumber,
+            message: content.message,
+            type: content.mediaUrl ? 'image' : 'text',
+            media: content.mediaUrl ? { url: content.mediaUrl, caption: content.message } : undefined
           })
           
           results.push({
@@ -89,7 +96,7 @@ export class WhatsAppPublisher {
             recipient: contactNumber,
             type: 'contact',
             status: 'failed',
-            error: error.message
+            error: error instanceof Error ? error.message : 'Unknown error'
           })
         }
       }
@@ -112,11 +119,15 @@ export class WhatsAppPublisher {
 
     for (const recipient of recipients) {
       try {
-        await this.whatsappClient.sendMessage(recipient, message)
+        await this.whatsappClient.sendMessage({
+          to: recipient,
+          message: message,
+          type: 'text'
+        })
         results.push({ recipient, status: 'sent' })
       } catch (error) {
         logger.error(`Failed to send to ${recipient}:`, error)
-        results.push({ recipient, status: 'failed', error: error.message })
+        results.push({ recipient, status: 'failed', error: error instanceof Error ? error.message : 'Unknown error' })
       }
       
       // Add delay to avoid rate limiting
@@ -134,15 +145,19 @@ export class WhatsAppPublisher {
 
   async getStatus(): Promise<any> {
     if (!this.whatsappClient) {
-      return { connected: false }
+      return { connected: false, sessionId: null }
     }
 
-    return await this.whatsappClient.getStatus()
+    return {
+      connected: this.whatsappClient.connected,
+      sessionId: this.whatsappClient.id,
+      connecting: this.whatsappClient.connecting
+    }
   }
 
   async disconnect(): Promise<void> {
     if (this.whatsappClient) {
-      await this.whatsappClient.disconnect()
+      await this.whatsappClient.destroy()
       logger.info('WhatsApp client disconnected')
     }
   }

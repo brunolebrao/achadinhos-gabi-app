@@ -109,21 +109,92 @@ export default async function whatsappRoutes(fastify: FastifyInstance) {
   // Restart session (admin only)
   fastify.post('/sessions/:id/restart', { preHandler: [authorize('ADMIN')] }, async (request, reply) => {
     const { id } = request.params as { id: string }
+    console.log(`[WhatsApp] Restart session requested for ID: ${id}`)
     
     try {
-      await whatsappService.destroySession(id)
+      // Check if account exists
       const account = await prisma.whatsAppAccount.findUnique({
         where: { id }
       })
       
-      if (account) {
-        await whatsappService.createSession(account.phoneNumber, account.name)
+      if (!account) {
+        console.log(`[WhatsApp] Account not found: ${id}`)
+        return reply.code(404).send({ error: 'WhatsApp account not found' })
       }
       
-      return { message: 'Session restart initiated' }
+      console.log(`[WhatsApp] Destroying session for: ${account.phoneNumber}`)
+      await whatsappService.destroySession(id)
+      
+      console.log(`[WhatsApp] Creating new session for: ${account.phoneNumber}`)
+      await whatsappService.createSession(account.phoneNumber, account.name)
+      
+      console.log(`[WhatsApp] Session restart completed for: ${account.phoneNumber}`)
+      return { message: 'Session restart initiated', accountId: id }
     } catch (error) {
-      console.error('Failed to restart session:', error)
-      return reply.code(500).send({ error: 'Failed to restart session' })
+      console.error('[WhatsApp] Failed to restart session:', error)
+      return reply.code(500).send({ 
+        error: 'Failed to restart session',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      })
+    }
+  })
+  
+  // Test endpoint - restart without auth (temporary for debugging)
+  fastify.post('/sessions/:id/restart-test', async (request, reply) => {
+    const { id } = request.params as { id: string }
+    console.log(`[WhatsApp TEST] Restart session requested for ID: ${id}`)
+    
+    try {
+      // Check if account exists
+      const account = await prisma.whatsAppAccount.findUnique({
+        where: { id }
+      })
+      
+      if (!account) {
+        console.log(`[WhatsApp TEST] Account not found: ${id}`)
+        return reply.code(404).send({ error: 'WhatsApp account not found' })
+      }
+      
+      // Check if whatsappService is initialized
+      if (!whatsappService) {
+        console.error('[WhatsApp TEST] WhatsApp service not initialized')
+        return reply.code(503).send({ error: 'WhatsApp service not initialized' })
+      }
+      
+      console.log(`[WhatsApp TEST] Account found: ${account.phoneNumber}, isConnected: ${account.isConnected}`)
+      
+      try {
+        console.log(`[WhatsApp TEST] Attempting to destroy session...`)
+        await whatsappService.destroySession(id)
+        console.log(`[WhatsApp TEST] Session destroyed successfully`)
+      } catch (destroyError) {
+        console.error(`[WhatsApp TEST] Error destroying session:`, destroyError)
+        // Continue anyway to try to create a new session
+      }
+      
+      console.log(`[WhatsApp TEST] Creating new session...`)
+      await whatsappService.createSession(account.phoneNumber, account.name)
+      
+      // Update account connection status
+      await prisma.whatsAppAccount.update({
+        where: { id },
+        data: { isConnected: false }
+      })
+      
+      console.log(`[WhatsApp TEST] Session restart completed`)
+      return { 
+        message: 'Session restart initiated',
+        accountId: id,
+        phoneNumber: account.phoneNumber,
+        isConnected: false
+      }
+    } catch (error) {
+      console.error('[WhatsApp TEST] Failed to restart session:', error)
+      return reply.code(500).send({ 
+        error: 'Failed to restart session',
+        details: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      })
     }
   })
 
@@ -209,6 +280,40 @@ export default async function whatsappRoutes(fastify: FastifyInstance) {
     }
   })
 
+  // Test endpoint - get session details without auth
+  fastify.get('/sessions/:id/status-test', async (request, reply) => {
+    const { id } = request.params as { id: string }
+    
+    try {
+      const session = await whatsappService.getSession(id)
+      const account = await prisma.whatsAppAccount.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          name: true,
+          phoneNumber: true,
+          isActive: true,
+          isConnected: true
+        }
+      })
+      
+      if (!account) {
+        return reply.code(404).send({ error: 'Account not found' })
+      }
+      
+      return {
+        account,
+        session: session || { isConnected: false, qrCode: null }
+      }
+    } catch (error) {
+      console.error('Failed to get session status:', error)
+      return reply.code(500).send({ 
+        error: 'Failed to get session status',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      })
+    }
+  })
+  
   // Public status endpoint for frontend with caching
   fastify.get('/status', async () => {
     // Check cache first

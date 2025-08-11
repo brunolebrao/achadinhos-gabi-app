@@ -123,6 +123,7 @@ async function bootstrap() {
   await fastify.register(import('./routes/auth-instagram-manual-token'), { prefix: '/api/auth/instagram/manual' })
   await fastify.register(import('./routes/instagram-publisher'), { prefix: '/api/instagram' })
   await fastify.register(import('./routes/scrapers-status'), { prefix: '/api/scrapers' })
+  await fastify.register(import('./routes/test-auth'), { prefix: '/api' })
 
   const port = parseInt(process.env.PORT || '3001')
   const host = process.env.HOST || '0.0.0.0'

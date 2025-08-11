@@ -65,7 +65,7 @@ export class ScraperManager {
       
       // Save products with progress
       progress.showSpinner('Salvando produtos no banco de dados...')
-      const productsAdded = await this.saveProducts(products, config.platform, config.userId)
+      const productsAdded = await this.saveProducts(products, config.platform, config.userId ?? undefined)
       progress.hideSpinner(true, `${productsAdded} novos produtos adicionados`)
 
       await prisma.scraperExecution.update({
@@ -336,13 +336,6 @@ export class ScraperManager {
             }
             break
           
-          case 'ALIEXPRESS':
-            if (config.aliexpressId) {
-              const url = new URL(productUrl)
-              url.searchParams.set('aff_id', config.aliexpressId)
-              return url.toString()
-            }
-            break
         }
       }
     }
@@ -361,9 +354,6 @@ export class ScraperManager {
         const amazonTag = process.env.AMAZON_ASSOCIATE_TAG
         return amazonTag ? `${productUrl}?tag=${amazonTag}` : productUrl
       
-      case 'ALIEXPRESS':
-        const aliexpressId = process.env.ALIEXPRESS_AFFILIATE_ID
-        return aliexpressId ? `${productUrl}?aff_id=${aliexpressId}` : productUrl
       
       default:
         return productUrl

@@ -54,11 +54,11 @@ export default function LoginPage() {
   }
 
   const handleDemoLogin = async () => {
-    console.log('🎯 Usando credenciais demo...')
+    console.log('🎯 Usando credenciais admin...')
     
     setFormData({
-      email: "demo@achadinhos.com",
-      password: "demo123"
+      email: "admin@achadinhos.com",
+      password: "123456"
     })
     
     // Auto submit after setting demo credentials
@@ -196,7 +196,7 @@ export default function LoginPage() {
                   onClick={handleDemoLogin}
                   disabled={isLoading}
                 >
-                  Usar conta demo
+                  Usar conta admin
                 </Button>
               </div>
             </form>

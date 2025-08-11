@@ -1,8 +1,7 @@
 export enum Platform {
   MERCADOLIVRE = 'MERCADOLIVRE',
   SHOPEE = 'SHOPEE',
-  AMAZON = 'AMAZON',
-  ALIEXPRESS = 'ALIEXPRESS'
+  AMAZON = 'AMAZON'
 }
 
 export enum ProductStatus {
@@ -29,6 +28,7 @@ export interface ProductData {
 
 export interface ScrapedProduct extends ProductData {
   scrapedAt: Date
+  metadata?: any
 }
 
 export interface ProductWithAffiliate extends ProductData {

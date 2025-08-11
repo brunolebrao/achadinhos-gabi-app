@@ -412,6 +412,12 @@ importers:
 
   packages/shared:
     dependencies:
+      openai:
+        specifier: ^5.12.2
+        version: 5.12.2(ws@8.18.3)(zod@3.25.76)
+      ws:
+        specifier: ^8.18.0
+        version: 8.18.3
       zod:
         specifier: ^3.23.8
         version: 3.25.76
@@ -3178,6 +3184,18 @@ packages:
     resolution: {integrity: sha512-VXJjc87FScF88uafS3JllDgvAm+c/Slfz06lorj2uAY34rlUu0Nt+v8wreiImcrgAjjIHp1rXpTDlLOGw29WwQ==}
     engines: {node: '>=18'}
 
+  openai@5.12.2:
+    resolution: {integrity: sha512-xqzHHQch5Tws5PcKR2xsZGX9xtch+JQFz5zb14dGqlshmmDAFBFEWmeIpf7wVqWV+w7Emj7jRgkNJakyKE0tYQ==}
+    hasBin: true
+    peerDependencies:
+      ws: ^8.18.0
+      zod: ^3.23.8
+    peerDependenciesMeta:
+      ws:
+        optional: true
+      zod:
+        optional: true
+
   optionator@0.9.4:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}
     engines: {node: '>= 0.8.0'}
@@ -4099,6 +4117,18 @@ packages:
 
   ws@8.16.0:
     resolution: {integrity: sha512-HS0c//TP7Ina87TfiPUz1rQzMhHrl/SG2guqRcTOIUYD2q8uhUdNHZYJUaQ8aTGPzCh+c6oawMKW35nFl1dxyQ==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
+
+  ws@8.18.3:
+    resolution: {integrity: sha512-PEIGCY5tSlUt50cqyMXfCzX+oOPqN0vuGqWzbcJ2xvnkzkq46oOpz7dQaTDBdfICb4N14+GARUDw2XV2N4tvzg==}
     engines: {node: '>=10.0.0'}
     peerDependencies:
       bufferutil: ^4.0.1
@@ -7009,6 +7039,11 @@ snapshots:
     dependencies:
       mimic-function: 5.0.1
 
+  openai@5.12.2(ws@8.18.3)(zod@3.25.76):
+    optionalDependencies:
+      ws: 8.18.3
+      zod: 3.25.76
+
   optionator@0.9.4:
     dependencies:
       deep-is: 0.1.4
@@ -8208,6 +8243,8 @@ snapshots:
   wrappy@1.0.2: {}
 
   ws@8.16.0: {}
+
+  ws@8.18.3: {}
 
   ws@8.9.0: {}
 

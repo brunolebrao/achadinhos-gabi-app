@@ -251,14 +251,14 @@ export class MercadoLivreScraper extends BaseScraper {
             // Extract review count
             const reviewText = $item.find('.ui-search-reviews__amount').text()
             const reviewMatch = reviewText.match(/\((\d+)\)/)
-            if (reviewMatch) {
+            if (reviewMatch && reviewMatch[1]) {
               product.reviewCount = parseInt(reviewMatch[1])
             }
             
             // Extract sales count if available
             const salesText = $item.find('.ui-search-item__highlight-label').text()
             const salesMatch = salesText.match(/(\d+).*vendid/i)
-            if (salesMatch) {
+            if (salesMatch && salesMatch[1]) {
               product.salesCount = parseInt(salesMatch[1])
             }
             

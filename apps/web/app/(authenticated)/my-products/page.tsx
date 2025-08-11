@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/ui/card"
 import { Button } from "@repo/ui/button"
 import { Badge } from "@repo/ui/badge"
+import { Checkbox } from "@repo/ui/checkbox"
 import { 
   Package, 
   ExternalLink, 
@@ -18,9 +19,13 @@ import {
   Search,
   Loader2,
   Bot,
-  MessageSquare
+  MessageSquare,
+  Send,
+  X,
+  CheckSquare
 } from "lucide-react"
 import { toast } from "sonner"
+import { WhatsAppCampaignModal } from "../../../components/WhatsAppCampaignModal"
 
 interface Product {
   id: string
@@ -82,6 +87,8 @@ export default function MyProductsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedPlatform, setSelectedPlatform] = useState("all")
   const [selectedStatus, setSelectedStatus] = useState("all")
+  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set())
+  const [showSendModal, setShowSendModal] = useState(false)
   const [stats, setStats] = useState({
     total: 0,
     userScrapers: 0,
@@ -137,6 +144,91 @@ export default function MyProductsPage() {
     } catch (error) {
       toast.error('Erro ao copiar link')
     }
+  }
+
+  const handleSelectProduct = (productId: string, checked: boolean) => {
+    const newSelected = new Set(selectedProducts)
+    if (checked) {
+      newSelected.add(productId)
+    } else {
+      newSelected.delete(productId)
+    }
+    setSelectedProducts(newSelected)
+  }
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedProducts(new Set(products.map(p => p.id)))
+    } else {
+      setSelectedProducts(new Set())
+    }
+  }
+
+  const handleBulkStatusUpdate = async (status: 'APPROVED' | 'REJECTED' | 'SENT') => {
+    if (selectedProducts.size === 0) return
+
+    try {
+      const response = await fetch('http://localhost:3001/api/products/bulk-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.accessToken}`
+        },
+        body: JSON.stringify({
+          ids: Array.from(selectedProducts),
+          status
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        toast.success(data.message)
+        setSelectedProducts(new Set())
+        fetchProducts() // Refresh the list
+      } else {
+        toast.error('Erro ao atualizar produtos')
+      }
+    } catch (error) {
+      console.error('Bulk update error:', error)
+      toast.error('Erro ao atualizar produtos')
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedProducts.size === 0) return
+
+    try {
+      const response = await fetch('http://localhost:3001/api/products/bulk-delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.accessToken}`
+        },
+        body: JSON.stringify({
+          ids: Array.from(selectedProducts)
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        toast.success(data.message)
+        setSelectedProducts(new Set())
+        fetchProducts() // Refresh the list
+      } else {
+        toast.error('Erro ao excluir produtos')
+      }
+    } catch (error) {
+      console.error('Bulk delete error:', error)
+      toast.error('Erro ao excluir produtos')
+    }
+  }
+
+  const handleSendToWhatsApp = () => {
+    if (selectedProducts.size === 0) {
+      toast.error('Selecione pelo menos um produto para enviar')
+      return
+    }
+    setShowSendModal(true)
   }
 
   const formatPrice = (price: number) => {
@@ -299,6 +391,57 @@ export default function MyProductsPage() {
           </Card>
         )}
 
+        {/* Bulk Actions Bar */}
+        {selectedProducts.size > 0 && (
+          <Card className="border-blue-200 bg-blue-50">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <CheckSquare className="h-5 w-5 text-blue-600" />
+                  <span className="font-semibold text-blue-800">
+                    {selectedProducts.size} produto(s) selecionado(s)
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleBulkStatusUpdate('APPROVED')}
+                    className="text-green-600 hover:text-green-700"
+                  >
+                    Aprovar Selecionados
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleBulkStatusUpdate('REJECTED')}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    Rejeitar Selecionados
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleSendToWhatsApp}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    <Send className="h-4 w-4 mr-2" />
+                    Enviar pelo WhatsApp
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedProducts(new Set())}
+                    className="text-gray-600 hover:text-gray-700"
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Limpar Seleção
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {products.length === 0 ? (
           <Card className="text-center py-12">
             <CardContent>
@@ -319,11 +462,59 @@ export default function MyProductsPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4">
+          <div className="space-y-4">
+            {/* Select All Header */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="select-all"
+                      checked={
+                        products.length > 0 && selectedProducts.size === products.length
+                      }
+                      onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
+                    />
+                    <label htmlFor="select-all" className="text-sm font-medium cursor-pointer">
+                      {selectedProducts.size === products.length
+                        ? 'Desmarcar todos'
+                        : 'Selecionar todos'}
+                      {products.length > 0 && ` (${products.length} produtos)`}
+                    </label>
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    {selectedProducts.size > 0
+                      ? `${selectedProducts.size} de ${products.length} selecionados`
+                      : `${products.length} produtos encontrados`}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Products Grid */}
+            <div className="grid gap-4">
             {products.map((product) => (
-              <Card key={product.id} className="hover:shadow-md transition-shadow">
+              <Card 
+                key={product.id} 
+                className={`hover:shadow-md transition-all ${
+                  selectedProducts.has(product.id) 
+                    ? 'ring-2 ring-blue-500 bg-blue-50' 
+                    : ''
+                }`}
+              >
                 <CardContent className="p-6">
-                  <div className="flex gap-4">
+                  {/* Selection Checkbox */}
+                  <div className="flex items-start gap-4">
+                    <Checkbox
+                      id={`product-${product.id}`}
+                      checked={selectedProducts.has(product.id)}
+                      onCheckedChange={(checked) => 
+                        handleSelectProduct(product.id, checked as boolean)
+                      }
+                      className="mt-1"
+                    />
+                    <div className="flex-1">
+                      <div className="flex gap-4">
                     <div className="flex-shrink-0">
                       <img 
                         src={product.imageUrl} 
@@ -420,21 +611,34 @@ export default function MyProductsPage() {
                         <Button
                           size="sm"
                           onClick={() => {
-                            // TODO: Implement WhatsApp sharing
-                            toast.info('Funcionalidade de compartilhamento será implementada em breve')
+                            // Quick select this product and show send modal
+                            setSelectedProducts(new Set([product.id]))
+                            setShowSendModal(true)
                           }}
                         >
                           <MessageSquare className="h-3 w-3 mr-1" />
-                          Compartilhar
+                          Enviar este Produto
                         </Button>
+                      </div>
                       </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             ))}
+            </div>
           </div>
         )}
+
+        {/* WhatsApp Campaign Modal */}
+        <WhatsAppCampaignModal 
+          isOpen={showSendModal}
+          onClose={() => {
+            setShowSendModal(false)
+            setSelectedProducts(new Set()) // Clear selection after modal closes
+          }}
+          selectedProducts={products.filter(p => selectedProducts.has(p.id))}
+        />
       </div>
   )
 }

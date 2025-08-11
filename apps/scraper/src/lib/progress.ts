@@ -122,7 +122,7 @@ export class ScraperProgress {
     ]
     
     table.forEach(([label, value]) => {
-      console.log(`  ${chalk.gray('▸')} ${label.padEnd(20)} ${value}`)
+      console.log(`  ${chalk.gray('▸')} ${label?.padEnd(20)} ${value}`)
     })
     
     console.log(chalk.gray('━'.repeat(60)) + '\n')
